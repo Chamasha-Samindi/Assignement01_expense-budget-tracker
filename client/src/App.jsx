@@ -1,134 +1,365 @@
-function App() {
-  return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-      <h1 className="text-4xl font-bold text-blue-600">
-        Expense & Budget Tracker
-      </h1>
-    </div>
-  )
-}
+import { useState, useEffect } from "react";
+import "./App.css";
 
-export default App
-
-/*import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+const API_BASE = "http://localhost:5000/api";
+const CATEGORIES = ["Food", "Transport", "Bills", "Shopping", "Entertainment", "Salary", "Other"];
 
 function App() {
-  const [count, setCount] = useState(0)
+  // --- Authentication States ---
+  const [token, setToken] = useState(localStorage.getItem("token") || "");
+  const [authUser, setAuthUser] = useState(JSON.parse(localStorage.getItem("user")) || null);
+  const [isLoginMode, setIsLoginMode] = useState(true);
+  const [authName, setAuthName] = useState("");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
+  // --- App States ---
+  const [transactions, setTransactions] = useState([]);
+  const [budgets, setBudgets] = useState([]);
+
+  // Filter States
+  const [filterCategory, setFilterCategory] = useState("All");
+  const [filterMonth, setFilterMonth] = useState("");
+
+  // Transaction Form States
+  const [title, setTitle] = useState("");
+  const [amount, setAmount] = useState("");
+  const [type, setType] = useState("expense");
+  const [category, setCategory] = useState("Food");
+
+  // Budget Form States
+  const [budgetCategory, setBudgetCategory] = useState("Food");
+  const [budgetLimit, setBudgetLimit] = useState("");
+
+  // Login වුණාට පස්සේ විතරක් Data ගන්න
+  useEffect(() => {
+    if (token) {
+      fetchTransactions();
+      fetchBudgets();
+    }
+  }, [token]);
+
+  // --- Auth Functions ---
+  const handleAuth = async (e) => {
+    e.preventDefault();
+    const endpoint = isLoginMode ? "login" : "register";
+    const body = isLoginMode
+      ? { email: authEmail, password: authPassword }
+      : { name: authName, email: authEmail, password: authPassword };
+
+    const res = await fetch(`${API_BASE}/auth/${endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      setToken(data.token);
+      setAuthUser(data.user);
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      setAuthEmail("");
+      setAuthPassword("");
+      setAuthName("");
+    } else {
+      alert(data.message || "Authentication failed!");
+    }
+  };
+
+  const handleLogout = () => {
+    setToken("");
+    setAuthUser(null);
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setTransactions([]);
+    setBudgets([]);
+  };
+
+  // --- Data Fetching & Operations (Token එක සමඟ) ---
+  const fetchTransactions = async () => {
+    const res = await fetch(`${API_BASE}/transactions`, {
+      headers: { Authorization: `Bearer ${token}` }, // Token එක යැවීම
+    });
+    const data = await res.json();
+    setTransactions(data);
+  };
+
+  const fetchBudgets = async () => {
+    const res = await fetch(`${API_BASE}/budgets`, {
+      headers: { Authorization: `Bearer ${token}` }, // Token එක යැවීම
+    });
+    const data = await res.json();
+    setBudgets(data);
+  };
+
+  const handleAddTransaction = async (e) => {
+    e.preventDefault();
+    if (!title || !amount) return;
+    const res = await fetch(`${API_BASE}/transactions`, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}` // Token එක යැවීම
+      },
+      body: JSON.stringify({ title, amount: Number(amount), type, category }),
+    });
+    if (res.ok) {
+      setTitle("");
+      setAmount("");
+      fetchTransactions();
+    }
+  };
+
+  const handleDeleteTransaction = async (id) => {
+    await fetch(`${API_BASE}/transactions/${id}`, { 
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` } // Token එක යැවීම
+    });
+    fetchTransactions();
+  };
+
+  const handleSaveBudget = async (e) => {
+    e.preventDefault();
+    if (!budgetLimit) return;
+    const res = await fetch(`${API_BASE}/budgets`, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}` // Token එක යැවීම
+      },
+      body: JSON.stringify({ category: budgetCategory, limit: Number(budgetLimit) }),
+    });
+    if (res.ok) {
+      setBudgetLimit("");
+      fetchBudgets();
+    }
+  };
+
+  // --- Calculations & Filters ---
+  const totalIncome = transactions.filter((t) => t.type === "income").reduce((acc, t) => acc + t.amount, 0);
+  const totalExpense = transactions.filter((t) => t.type === "expense").reduce((acc, t) => acc + t.amount, 0);
+  const balance = totalIncome - totalExpense;
+
+  const filteredTransactions = transactions.filter((t) => {
+    const matchCategory = filterCategory === "All" || t.category === filterCategory;
+    const matchMonth = filterMonth === "" || t.date.substring(0, 7) === filterMonth;
+    return matchCategory && matchMonth;
+  });
+
+  // --- Login / Register UI ---
+  if (!token) {
+    return (
+      <div className="auth-container">
+        <div className="auth-card">
+          <h2>{isLoginMode ? "Welcome Back! 👋" : "Create Account 🚀"}</h2>
+          <p>{isLoginMode ? "Login to manage your expenses" : "Sign up to get started"}</p>
+          
+          <form onSubmit={handleAuth}>
+            {!isLoginMode && (
+              <input
+                type="text"
+                placeholder="Full Name"
+                value={authName}
+                onChange={(e) => setAuthName(e.target.value)}
+                required
+              />
+            )}
+            <input
+              type="email"
+              placeholder="Email Address"
+              value={authEmail}
+              onChange={(e) => setAuthEmail(e.target.value)}
+              required
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={authPassword}
+              onChange={(e) => setAuthPassword(e.target.value)}
+              required
+            />
+            <button type="submit" className="btn-primary">
+              {isLoginMode ? "Login" : "Register"}
+            </button>
+          </form>
+
+          <p className="auth-switch">
+            {isLoginMode ? "Don't have an account? " : "Already have an account? "}
+            <span onClick={() => setIsLoginMode(!isLoginMode)}>
+              {isLoginMode ? "Register here" : "Login here"}
+            </span>
           </p>
         </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+      </div>
+    );
+  }
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+  // --- Dashboard UI ---
+  return (
+    <div className="container">
+      <header className="header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1>💰 Expense & Budget Tracker</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <strong>👤 {authUser?.name}</strong>
+          <button onClick={handleLogout} className="btn-logout">Logout</button>
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      </header>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      {/* Summary Cards */}
+      <div className="summary-grid">
+        <div className="card balance">
+          <h3>Total Balance</h3>
+          <p>Rs. {balance.toLocaleString()}</p>
+        </div>
+        <div className="card income">
+          <h3>Total Income</h3>
+          <p>+ Rs. {totalIncome.toLocaleString()}</p>
+        </div>
+        <div className="card expense">
+          <h3>Total Expense</h3>
+          <p>- Rs. {totalExpense.toLocaleString()}</p>
+        </div>
+      </div>
+
+      <div className="main-grid">
+        {/* Left Column: Forms */}
+        <div className="forms-column">
+          <div className="panel">
+            <h2>Add Transaction</h2>
+            <form onSubmit={handleAddTransaction}>
+              <input
+                type="text"
+                placeholder="Description (e.g., Lunch, Bus Fare)"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                required
+              />
+              <input
+                type="number"
+                placeholder="Amount (Rs.)"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                required
+              />
+              <div className="row">
+                <select value={type} onChange={(e) => setType(e.target.value)}>
+                  <option value="expense">Expense (-)</option>
+                  <option value="income">Income (+)</option>
+                </select>
+                <select value={category} onChange={(e) => setCategory(e.target.value)}>
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+              <button type="submit" className="btn-primary">Add Transaction</button>
+            </form>
+          </div>
+
+          <div className="panel">
+            <h2>Set Monthly Budget</h2>
+            <form onSubmit={handleSaveBudget}>
+              <div className="row">
+                <select value={budgetCategory} onChange={(e) => setBudgetCategory(e.target.value)}>
+                  {CATEGORIES.filter((c) => c !== "Salary").map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  placeholder="Limit (Rs.)"
+                  value={budgetLimit}
+                  onChange={(e) => setBudgetLimit(e.target.value)}
+                  required
+                />
+              </div>
+              <button type="submit" className="btn-secondary">Save Budget Limit</button>
+            </form>
+          </div>
+        </div>
+
+        {/* Right Column: Budgets & Transactions List */}
+        <div className="data-column">
+          <div className="panel">
+            <h2>Budget Status</h2>
+            {budgets.length === 0 ? (
+              <p className="empty-text">No budgets set yet.</p>
+            ) : (
+              budgets.map((b) => {
+                const spent = transactions
+                  .filter((t) => t.type === "expense" && t.category === b.category)
+                  .reduce((acc, t) => acc + t.amount, 0);
+                const percent = Math.min((spent / b.limit) * 100, 100);
+                const isOver = spent > b.limit;
+
+                return (
+                  <div key={b._id} className="budget-item">
+                    <div className="budget-header">
+                      <strong>{b.category}</strong>
+                      <span className={isOver ? "over-limit" : ""}>
+                        Rs. {spent.toLocaleString()} / Rs. {b.limit.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="progress-bar">
+                      <div
+                        className={`progress-fill ${isOver ? "danger" : ""}`}
+                        style={{ width: `${percent}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          <div className="panel">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '15px' }}>
+              <h2 style={{ border: 'none', margin: 0, padding: 0 }}>Recent Transactions</h2>
+              
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} style={{ padding: '6px', borderRadius: '5px', border: '1px solid #ddd' }}>
+                  <option value="All">All Categories</option>
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+                <input
+                  type="month"
+                  value={filterMonth}
+                  onChange={(e) => setFilterMonth(e.target.value)}
+                  style={{ padding: '6px', borderRadius: '5px', border: '1px solid #ddd' }}
+                />
+              </div>
+            </div>
+
+            {filteredTransactions.length === 0 ? (
+              <p className="empty-text">No transactions found for the selected filters.</p>
+            ) : (
+              <ul className="transaction-list">
+                {filteredTransactions.map((t) => (
+                  <li key={t._id} className={`transaction-item ${t.type}`}>
+                    <div>
+                      <strong>{t.title}</strong>
+                      <span className="badge">{t.category}</span>
+                    </div>
+                    <div className="amount-actions">
+                      <span className={t.type === "income" ? "text-green" : "text-red"}>
+                        {t.type === "income" ? "+" : "-"} Rs. {t.amount.toLocaleString()}
+                      </span>
+                      <button onClick={() => handleDeleteTransaction(t._id)} className="delete-btn">
+                        ✕
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
-export default App*/
+export default App;
