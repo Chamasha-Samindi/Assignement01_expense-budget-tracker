@@ -6,7 +6,6 @@ import { PieChart, Pie, Cell, Tooltip, Legend } from "recharts";
 const API_BASE = "http://127.0.0.1:5000/api";
 const CATEGORIES = ["Food", "Transport", "Bills", "Shopping", "Entertainment", "Salary", "Other"];
 
-
 function App() {
   // --- Authentication States ---
   const [token, setToken] = useState(localStorage.getItem("token") || "");
@@ -37,7 +36,6 @@ function App() {
   const [editId, setEditId] = useState(null);
 
   const handleEdit = (transaction) => {
-    // 2. setDescription වෙනුවට setTitle පාවිච්චි කිරීම
     setTitle(transaction.title); 
     setAmount(transaction.amount);
     setType(transaction.type);
@@ -60,7 +58,7 @@ function App() {
 
   const COLORS = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'];
 
-   // Login වුණාට පස්සේ විතරක් Data ගන්න
+  // Login වුණාට පස්සේ විතරක් Data ගන්න
   useEffect(() => {
     if (token) {
       fetchTransactions();
@@ -105,10 +103,10 @@ function App() {
     setBudgets([]);
   };
 
-  // --- Data Fetching & Operations (Token එක සමඟ) ---
+  // --- Data Fetching & Operations ---
   const fetchTransactions = async () => {
     const res = await fetch(`${API_BASE}/transactions`, {
-      headers: { Authorization: `Bearer ${token}` }, // Token එක යැවීම
+      headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
     setTransactions(data);
@@ -116,7 +114,7 @@ function App() {
 
   const fetchBudgets = async () => {
     const res = await fetch(`${API_BASE}/budgets`, {
-      headers: { Authorization: `Bearer ${token}` }, // Token එක යැවීම
+      headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
     setBudgets(data);
@@ -125,7 +123,7 @@ function App() {
   const handleAddTransaction = async (e) => {
     e.preventDefault();
     if (!title || !amount) return;
-   const method = editId ? "PUT" : "POST";
+    const method = editId ? "PUT" : "POST";
     const url = editId 
         ? `${API_BASE}/transactions/${editId}` 
         : `${API_BASE}/transactions`;
@@ -145,13 +143,12 @@ function App() {
         setEditId(null);
         fetchTransactions();
     }
-    
   };
 
   const handleDeleteTransaction = async (id) => {
     await fetch(`${API_BASE}/transactions/${id}`, { 
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` } // Token එක යැවීම
+      headers: { Authorization: `Bearer ${token}` }
     });
     fetchTransactions();
   };
@@ -163,7 +160,7 @@ function App() {
       method: "POST",
       headers: { 
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}` // Token එක යැවීම
+        Authorization: `Bearer ${token}`
       },
       body: JSON.stringify({ category: budgetCategory, limit: Number(budgetLimit) }),
     });
@@ -171,6 +168,27 @@ function App() {
       setBudgetLimit("");
       fetchBudgets();
     }
+  };
+
+  // CSV Export කිරීමේ Function එක 
+  const exportToCSV = () => {
+    if (transactions.length === 0) {
+      alert("No transactions to export!");
+      return;
+    }
+    const headers = ["Title,Amount,Type,Category\n"];
+    const csvData = transactions.map(t => {
+      return `"${t.title}",${t.amount},${t.type},${t.category}`;
+    });
+    const blob = new Blob([headers + csvData.join("\n")], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.setAttribute("hidden", "");
+    a.setAttribute("href", url);
+    a.setAttribute("download", "budget_transactions.csv");
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   // --- Calculations & Filters ---
@@ -216,14 +234,14 @@ function App() {
               onChange={(e) => setAuthPassword(e.target.value)}
               required
             />
-            <button type="submit" className="btn-primary">
+            <button type="submit" className="btn-primary" style={{ cursor: 'pointer' }}>
               {isLoginMode ? "Login" : "Register"}
             </button>
           </form>
 
           <p className="auth-switch">
             {isLoginMode ? "Don't have an account? " : "Already have an account? "}
-            <span onClick={() => setIsLoginMode(!isLoginMode)}>
+            <span onClick={() => setIsLoginMode(!isLoginMode)} style={{ cursor: 'pointer' }}>
               {isLoginMode ? "Register here" : "Login here"}
             </span>
           </p>
@@ -239,7 +257,7 @@ function App() {
         <h1>💰 Expense & Budget Tracker</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <strong>👤 {authUser?.name}</strong>
-          <button onClick={handleLogout} className="btn-logout">Logout</button>
+          <button onClick={handleLogout} className="btn-logout" style={{ cursor: 'pointer' }}>Logout</button>
         </div>
       </header>
 
@@ -255,7 +273,7 @@ function App() {
         </div>
         <div className="card expense">
           <h3>Total Expense</h3>
-          <p>- Rs. {totalExpense.toLocaleString()}</p>
+          <p>Rs. {totalExpense.toLocaleString()}</p>
         </div>
       </div>
 
@@ -290,7 +308,7 @@ function App() {
                   ))}
                 </select>
               </div>
-              <button type="submit" className="btn-primary">Add Transaction</button>
+              <button type="submit" className="btn-primary" style={{ cursor: 'pointer' }}>Add Transaction</button>
             </form>
           </div>
 
@@ -311,7 +329,7 @@ function App() {
                   required
                 />
               </div>
-              <button type="submit" className="btn-secondary">Save Budget Limit</button>
+              <button type="submit" className="btn-secondary" style={{ cursor: 'pointer' }}>Save Budget Limit</button>
             </form>
           </div>
         </div>
@@ -350,35 +368,44 @@ function App() {
             )}
           </div>
           <div className="panel" style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
-  <div style={{ textAlign: 'center' }}>
-    <h2 style={{ marginBottom: '15px' }}>Expenses by Category</h2>
-    {expenseData.length > 0 ? (
-      <PieChart width={400} height={300}>
-        <Pie
-          data={expenseData}
-          cx="50%"
-          cy="50%"
-          outerRadius={100}
-          fill="#8884d8"
-          dataKey="value"
-          label
-        >
-          {expenseData.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-          ))}
-        </Pie>
-        <Tooltip />
-        <Legend />
-      </PieChart>
-    ) : (
-      <p className="empty-text">No expenses to show in chart.</p>
-    )}
-  </div>
-</div>
+            <div style={{ textAlign: 'center' }}>
+              <h2 style={{ marginBottom: '15px' }}>Expenses by Category</h2>
+              {expenseData.length > 0 ? (
+                <PieChart width={400} height={300}>
+                  <Pie
+                    data={expenseData}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="value"
+                    label
+                  >
+                    {expenseData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              ) : (
+                <p className="empty-text">No expenses to show in chart.</p>
+              )}
+            </div>
+          </div>
           <div className="panel">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '15px' }}>
+              
               <h2 style={{ border: 'none', margin: 0, padding: 0 }}>Recent Transactions</h2>
               
+              {/* CSV Export Button */}
+              <button 
+                onClick={exportToCSV} 
+                style={{ backgroundColor: '#28a745', color: 'white', padding: '6px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+              >
+                Export CSV
+              </button>
+
               <div style={{ display: 'flex', gap: '10px' }}>
                 <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} style={{ padding: '6px', borderRadius: '5px', border: '1px solid #ddd' }}>
                   <option value="All">All Categories</option>
@@ -410,17 +437,18 @@ function App() {
                         {t.type === "income" ? "+" : "-"} Rs. {t.amount.toLocaleString()}
                       </span>
                       <button 
-    onClick={() => handleEdit(t)} 
-    style={{ backgroundColor: 'orange', color: 'white', marginRight: '10px', padding: '5px 10px', border: 'none', borderRadius: '4px' }}
->
-    Edit
-</button>
-<button 
-    onClick={() => handleDeleteTransaction(t._id)} 
-    className="delete-btn"
->
-    Delete
-</button>
+                        onClick={() => handleEdit(t)} 
+                        style={{ backgroundColor: 'orange', color: 'white', marginRight: '10px', padding: '5px 10px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteTransaction(t._id)} 
+                        className="delete-btn"
+                        style={{ cursor: 'pointer' }}
+                      >
+                        Delete
+                      </button>
                     </div>
                   </li>
                 ))}

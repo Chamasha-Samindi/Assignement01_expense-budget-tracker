@@ -7,10 +7,10 @@ A complete full-stack web application built using the MERN stack (MongoDB, Expre
 ### Application Screenshots
 
 **Dashboard & Pie Chart**
-![Dashboard](./screenshot/dashboard.png)
+![Dashboard](./screenshot/Dashboard_main.png)
 
-**Edit Transaction Feature**
-![Edit Feature](./screenshot/register.png)
+**User Login Page**
+![Edit Feature](./screenshot/user_login_register.png)
 
 
 *   **Secure Authentication:** User login and registration system using JSON Web Tokens (JWT) and securely hashed passwords (bcrypt).
