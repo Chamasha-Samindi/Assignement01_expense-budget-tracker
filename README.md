@@ -9,7 +9,7 @@ A complete full-stack web application built using the MERN stack (MongoDB, Expre
 **Dashboard & Pie Chart**
 ![Dashboard](./screenshot/dashboard.png)
 
-**Edit Transaction Feature**
+**Register Page**
 ![Edit Feature](./screenshot/register.png)
 
 
