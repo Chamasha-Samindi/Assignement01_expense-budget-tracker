@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import "./App.css";
+import { PieChart, Pie, Cell, Tooltip, Legend } from "recharts";
 
 const API_BASE = "http://localhost:5000/api";
 const CATEGORIES = ["Food", "Transport", "Bills", "Shopping", "Entertainment", "Salary", "Other"];
+
 
 function App() {
   // --- Authentication States ---
@@ -31,7 +33,33 @@ function App() {
   const [budgetCategory, setBudgetCategory] = useState("Food");
   const [budgetLimit, setBudgetLimit] = useState("");
 
-  // Login වුණාට පස්සේ විතරක් Data ගන්න
+  const [editId, setEditId] = useState(null);
+
+  const handleEdit = (transaction) => {
+    // 2. setDescription වෙනුවට setTitle පාවිච්චි කිරීම
+    setTitle(transaction.title); 
+    setAmount(transaction.amount);
+    setType(transaction.type);
+    setCategory(transaction.category);
+    setEditId(transaction._id);
+  };
+
+  // Chart එක සඳහා වියදම් දත්ත සකස් කිරීම
+  const expenseData = transactions
+    .filter(t => t.type === "expense")
+    .reduce((acc, curr) => {
+      const existing = acc.find(item => item.name === curr.category);
+      if (existing) {
+        existing.value += curr.amount;
+      } else {
+        acc.push({ name: curr.category, value: curr.amount });
+      }
+      return acc;
+    }, []);
+
+  const COLORS = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'];
+
+   // Login වුණාට පස්සේ විතරක් Data ගන්න
   useEffect(() => {
     if (token) {
       fetchTransactions();
@@ -96,19 +124,27 @@ function App() {
   const handleAddTransaction = async (e) => {
     e.preventDefault();
     if (!title || !amount) return;
-    const res = await fetch(`${API_BASE}/transactions`, {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}` // Token එක යැවීම
-      },
-      body: JSON.stringify({ title, amount: Number(amount), type, category }),
+   const method = editId ? "PUT" : "POST";
+    const url = editId 
+        ? `${API_BASE}/transactions/${editId}` 
+        : `${API_BASE}/transactions`;
+
+    const res = await fetch(url, {
+        method: method,
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}` 
+        },
+        body: JSON.stringify({ title, amount: Number(amount), type, category })
     });
+
     if (res.ok) {
-      setTitle("");
-      setAmount("");
-      fetchTransactions();
+        setTitle("");
+        setAmount("");
+        setEditId(null);
+        fetchTransactions();
     }
+    
   };
 
   const handleDeleteTransaction = async (id) => {
@@ -312,7 +348,32 @@ function App() {
               })
             )}
           </div>
-
+          <div className="panel" style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+  <div style={{ textAlign: 'center' }}>
+    <h2 style={{ marginBottom: '15px' }}>Expenses by Category</h2>
+    {expenseData.length > 0 ? (
+      <PieChart width={400} height={300}>
+        <Pie
+          data={expenseData}
+          cx="50%"
+          cy="50%"
+          outerRadius={100}
+          fill="#8884d8"
+          dataKey="value"
+          label
+        >
+          {expenseData.map((entry, index) => (
+            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+          ))}
+        </Pie>
+        <Tooltip />
+        <Legend />
+      </PieChart>
+    ) : (
+      <p className="empty-text">No expenses to show in chart.</p>
+    )}
+  </div>
+</div>
           <div className="panel">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '15px' }}>
               <h2 style={{ border: 'none', margin: 0, padding: 0 }}>Recent Transactions</h2>
@@ -347,9 +408,18 @@ function App() {
                       <span className={t.type === "income" ? "text-green" : "text-red"}>
                         {t.type === "income" ? "+" : "-"} Rs. {t.amount.toLocaleString()}
                       </span>
-                      <button onClick={() => handleDeleteTransaction(t._id)} className="delete-btn">
-                        ✕
-                      </button>
+                      <button 
+    onClick={() => handleEdit(t)} 
+    style={{ backgroundColor: 'orange', color: 'white', marginRight: '10px', padding: '5px 10px', border: 'none', borderRadius: '4px' }}
+>
+    Edit
+</button>
+<button 
+    onClick={() => handleDeleteTransaction(t._id)} 
+    className="delete-btn"
+>
+    Delete
+</button>
                     </div>
                   </li>
                 ))}

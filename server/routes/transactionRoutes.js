@@ -43,4 +43,22 @@ router.delete("/:id", auth, async (req, res) => {
   }
 });
 
+
+// Update a transaction
+router.put('/:id', auth, async (req, res) => {
+    try {
+        const updatedTransaction = await Transaction.findOneAndUpdate(
+            { _id: req.params.id, userId: req.user.id },
+            req.body,
+            { new: true }
+        );
+        if (!updatedTransaction) {
+            return res.status(404).json({ msg: 'Transaction not found or unauthorized' });
+        }
+        res.json(updatedTransaction);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
